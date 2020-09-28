@@ -9,6 +9,7 @@ from rest_framework.response import Response
 
 from seminar.models import Seminar, UserSeminar
 from seminar.serializers import SeminarSerializer, InstructorProfileSerializer
+from user.models import InstructorProfile
 # Create your views here.
 
 class SeminarViewSet(viewsets.GenericViewSet):
@@ -24,6 +25,7 @@ class SeminarViewSet(viewsets.GenericViewSet):
     # @action(detail=False, methods=['POST'])
     def create(self, request):
         user = request.user
+        #seminar =
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -36,21 +38,50 @@ class SeminarViewSet(viewsets.GenericViewSet):
         time = request.data.get('time')
         online = request.data.get('online')'''
 
-
+        #print(1)
         #seminar = Seminar(name = name, capacity = capacity, count = count, time = time, online = online)
-        #userseminar = UserSeminar(user=user, seminar = seminar)
 
-        seminar = Seminar.objects.create(**serializer.validated_data, instructors=user.instructor)
-        InstructorProfile.objects.create(user = user, seminar = seminar)
+
+        seminar = Seminar.objects.create(**serializer.validated_data)
+        userseminar = UserSeminar.objects.create(user=user, seminar=seminar)
+        #print(userseminar)
+        #print(seminar)
+
+        #print(2)
+        #seminar.instructors = user.instructor.objects.get(id)
+        #seminar.save()
+        #InstructorProfile.objects.create(user = user)#, seminar = seminar)
+
         #serializer.save(**serializer.validated_data, instructors = InstructorProfileSerializer(user.instructor))
         #print(serializer.data)
         #print(serializer)
         #UserSeminar.objects.create(user = user, seminar = seminar)
 
+        #serializer = self.get_serializer(seminar, data=request.data)
+        #serializer.is_valid(raise_exception=True)
         return Response(serializer.data, status = status.HTTP_201_CREATED)
 
-    #def update(self, request, pk=None):
+    def update(self, request, pk=None):
+        user = request.user
+        seminar = self.get_object()
+
+        if not seminar:
+            return Response(status = status.HTTP_404_NOT_FOUND)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not hasattr(user, 'instructor'):
+            return Response({"error": "Only instructors can use this method."}, status=status.HTTP_403_FORBIDDEN)
+
+        userseminar = UserSeminar.Object.filter(seminar = seminar)
+
+        if not userseminar.object.filter(user):
+            return Response({"error": "Only instructors can use this method."}, status=status.HTTP_403_FORBIDDEN)
+
+        capacity = request.data.get('capacity')
+        capacity = int(capacity)
 
 
+        serializer.update(seminar, serializer.validated_data)
+        return Response(serializer.data, status = status.HTTP_200_OK)
 
 

@@ -52,7 +52,7 @@ class UserSerializer(serializers.ModelSerializer):
         #print('token')
         return user
 
-
+'''
 class ParticipantProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParticipantProfile
@@ -76,4 +76,4 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
             'updated_at',
             'company',
             'year',
-        )
+        )'''

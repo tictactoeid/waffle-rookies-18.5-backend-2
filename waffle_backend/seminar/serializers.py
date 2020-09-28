@@ -1,14 +1,14 @@
 from django.contrib.auth.models import User
 from seminar.models import Seminar, UserSeminar
 from rest_framework import serializers
-#from user.models import InstructorProfile, ParticipantProfile
+from user.models import InstructorProfile, ParticipantProfile
 
 class InstructorProfileSerializer(serializers.ModelSerializer):
 
     joined_at = serializers.SerializerMethodField()
 
     class Meta:
-        model = User
+        model = InstructorProfile
         fields = (
             'id',
             'username',
@@ -27,7 +27,7 @@ class ParticipantProfileSerializer(serializers.ModelSerializer):
     dropped_at = serializers.SerializerMethodField()
 
     class Meta:
-        model = User
+        model = ParticipantProfile
         fields = (
             'id',
             'username',
@@ -60,7 +60,7 @@ class SeminarSerializer(serializers.ModelSerializer):
     online = serializers.BooleanField(default = True)
     #instructors = serializers.SerializerMethodField()
     #participants = serializers.SerializerMethodField()
-    instructors = InstructorProfileSerializer(many=True, required=False)
+    instructors = InstructorProfileSerializer(read_only=True, many=True)
     participants = ParticipantProfileSerializer(many=True, required=False)
 
     class Meta:
@@ -75,7 +75,21 @@ class SeminarSerializer(serializers.ModelSerializer):
             'instructors',
             'participants'
         )
-    #def get_instructors(self, obj):
+
+    '''def get_instructors(self, seminar):
+
+        seminar.userseminar.filter
+        print(seminar)
+        print(seminar.get('id'))
+        userseminar = seminar.userseminar
+        print(userseminar)
+        profile = userseminar.user.instructor
+        return profile
+
+    def get_participants(self, seminar):
+        userseminar = UserSeminar.objects.filter(seminar = seminar)
+        profile = userseminar.user.participants
+        return profile'''
 
     def validate_capacity(self, value):
         try:
