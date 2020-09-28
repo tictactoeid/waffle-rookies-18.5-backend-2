@@ -54,14 +54,16 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ParticipantProfileSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = ParticipantProfile
         fields = (
-            'user',
+            'id',
             'created_at',
             'updated_at',
             'university',
+            #'accepted',
+
+
         )
 
 class InstructorProfileSerializer(serializers.ModelSerializer):
@@ -69,7 +71,7 @@ class InstructorProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = InstructorProfile
         fields = (
-            'user',
+            'id',
             'created_at',
             'updated_at',
             'company',

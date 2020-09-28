@@ -10,7 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from user.serializers import UserSerializer
 from user.models import ParticipantProfile, InstructorProfile
-from seminar.models import UserSeminar
+#from seminar.models import UserSeminar
 
 class UserViewSet(viewsets.GenericViewSet):
     queryset = User.objects.all()
@@ -22,7 +22,7 @@ class UserViewSet(viewsets.GenericViewSet):
             return (AllowAny(), )
         return self.permission_classes
 
-    def create(self, request):
+    def create(self, request): #회원가입. POST /api/v1/user/
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         role = request.data.get('role')
@@ -30,28 +30,38 @@ class UserViewSet(viewsets.GenericViewSet):
         company = request.data.get('company')
         year = request.data.get('year')
         seminar = request.data.get('seminar')
+        #print(seminar)
+        #print(type(seminar))
+        #print(year)
+        #print(type(year))
 
         if year != None:
-            if type(year) != int or year < 0:
+            try:
+                year = int(year)
+            except TypeError:
                 return Response({"error": "Your year should be 0 or a positive integer."},
                                 status=status.HTTP_400_BAD_REQUEST)
+            else:
+                if year < 0:
+                    return Response({"error": "Your year should be 0 or a positive integer."},
+                                   status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            user = serializer.save()  # serializer.save(): instance 존재하면 serializers.py의 create(), 없으면 update() 호출
+            user = serializer.save()  # serializer.save(): instance 존재하면 serializers.py의 update(), 없으면 create() 호출
             # print('user')
 
             if role == 'participant':
                 profile = ParticipantProfile(user=user, university=university)
                 profile.save()
-                userseminar = UserSeminar(user=user, role=role, seminar=seminar)
-                userseminar.save()
+                #userseminar = UserSeminar(user=user, role=role, seminar=seminar)
+                #userseminar.save()
                 # print('role')
 
             elif role == 'instructor':
                 profile = InstructorProfile(user=user, company=company, year=year)
                 profile.save()
-                userseminar = UserSeminar(user=user, role=role, seminar=seminar)
-                userseminar.save()
+                #userseminar = UserSeminar(user=user, role=role, seminar=seminar)
+                #userseminar.save()
                 # print('role')
 
             else:
@@ -95,24 +105,50 @@ class UserViewSet(viewsets.GenericViewSet):
         return Response(self.get_serializer(user).data)
 
     def update(self, request, pk=None): # PUT /api/v1/user/me/
-        print('update')
+        #print('update')
         if pk != 'me':
             return Response({"error": "Can't update other Users information"}, status=status.HTTP_403_FORBIDDEN)
 
         user = request.user
 
-        print(hasattr(user, 'participant'))
-        print(hasattr(user, 'instructor'))
-        '''try:
-            profile = ParticipantProfile(user=user)
-            print('participant')
-        except DoesNotExistError:
-            profile = InstructorProfile(user=user)
-            print('instructor')'''
-        #elif user.instructor:
-        #    profile = InstructorProfile(user=user)
-        #    print('instructor')
+        #role = request.data.get('role')
+        university = request.data.get('university')
+        company = request.data.get('company')
+        year = request.data.get('year')
+        #seminar = request.data.get('seminar')
 
+        # print(hasattr(user, 'participant'))
+        # print(hasattr(user, 'instructor'))
+
+        if hasattr(user, 'participant'):
+            profile = user.participant
+            #print(profile.university)
+            profile.university = university
+            profile.save()
+            #print(profile.university)
+            #profile.update?
+
+        elif hasattr(user, 'instructor'):
+            profile = user.instructor
+            profile.company = company
+
+            if year != None:
+                try:
+                    year = int(year)
+                    profile.year = year
+                except TypeError:
+                    return Response({"error": "Your year should be 0 or a positive integer."},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    if year < 0:
+                        return Response({"error": "Your year should be 0 or a positive integer."},
+                                        status=status.HTTP_400_BAD_REQUEST)
+
+            profile.save()
+
+        else:
+            return Response({"error": "You do not have any role"}, status=status.HTTP_400_BAD_REQUEST)
+        '''
         try:
             user.instructor
         except ObjectDoesNotExist:
@@ -120,9 +156,25 @@ class UserViewSet(viewsets.GenericViewSet):
         try:
             user.participant
         except ObjectDoesNotExist:
-            print("no par")
+            print("no par")'''
 
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.update(user, serializer.validated_data)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['POST'])
+    def participant(self, request):
+        user = request.user
+        university = request.data.get("university")
+
+        if hasattr(user, 'participant'):
+            return Response({"error": "You are already an participant."}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile = ParticipantProfile(user=user, university=university)
+        profile.save()
+
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(user, serializer.validated_data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
