@@ -30,10 +30,6 @@ class UserViewSet(viewsets.GenericViewSet):
         company = request.data.get('company')
         year = request.data.get('year')
         seminar = request.data.get('seminar')
-        #print(seminar)
-        #print(type(seminar))
-        #print(year)
-        #print(type(year))
 
         if year != None:
             try:
@@ -45,32 +41,40 @@ class UserViewSet(viewsets.GenericViewSet):
                 if year < 0:
                     return Response({"error": "Your year should be 0 or a positive integer."},
                                    status=status.HTTP_400_BAD_REQUEST)
-
         try:
             user = serializer.save()  # serializer.save(): instance 존재하면 serializers.py의 update(), 없으면 create() 호출
             # print('user')
 
-            if role == 'participant':
-                profile = ParticipantProfile(user=user, university=university)
-                profile.save()
-                #userseminar = UserSeminar(user=user, role=role, seminar=seminar)
-                #userseminar.save()
-                # print('role')
-
-            elif role == 'instructor':
-                profile = InstructorProfile(user=user, company=company, year=year)
-                profile.save()
-                #userseminar = UserSeminar(user=user, role=role, seminar=seminar)
-                #userseminar.save()
-                # print('role')
-
-            else:
-                return Response({"error": "Your role should be 'participant' or 'instructor'."},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-        except IntegrityError:# as e:
+        except IntegrityError as e:
+            print("Error:" + str(e))
             return Response({"error": "A user with that username already exists."}, status=status.HTTP_400_BAD_REQUEST)
             #print("Error:" + str(e))
+
+        if role == 'participant':
+            if university == None:
+                university = ""
+            profile = ParticipantProfile.objects.create(user=user, university=university)
+            #ParticipantProfile(user=user, university=university)
+            #profile.save()
+            #userseminar = UserSeminar(user=user, role=role, seminar=seminar)
+            #userseminar.save()
+            # print('role')
+
+        elif role == 'instructor':
+            if company == None:
+                company = ""
+            profile = InstructorProfile.objects.create(user=user, company=company, year=year)
+            #profile = InstructorProfile(user=user, company=company, year=year)
+            #profile.save()
+            #userseminar = UserSeminar(user=user, role=role, seminar=seminar)
+            #userseminar.save()
+            print('role')
+
+        else:
+            return Response({"error": "Your role should be 'participant' or 'instructor'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
 
         login(request, user)
 
@@ -99,7 +103,7 @@ class UserViewSet(viewsets.GenericViewSet):
         logout(request)
         return Response()
 
-    def retrieve(self, request, pk=None):
+    def retrieve(self, request, pk=None): # GET /api/v1/user/{user_id}/
         #print('retrieve')
         user = request.user if pk == 'me' else self.get_object()
         return Response(self.get_serializer(user).data)

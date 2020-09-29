@@ -2,7 +2,8 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
-from .models import ParticipantProfile, InstructorProfile
+from seminar.serializers import ParticipantProfileSerializer, InstructorProfileSerializer
+from django.core.exceptions import ObjectDoesNotExist
 
 class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(allow_blank=False)
@@ -11,6 +12,8 @@ class UserSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(required=False)
     last_login = serializers.DateTimeField(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True)
+    participant = serializers.SerializerMethodField()
+    instructor = serializers.SerializerMethodField()
     #role = serializers.CharField(allow_blank=False)
     #university = serializers.CharField(allow_blank=True, required=False)
     #company=serializers.CharField(allow_blank=True, required=False)
@@ -27,11 +30,26 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'last_login',
             'date_joined',
+            'participant',
+            'instructor',
             #'role',
             #'university',
             #'company',
             #'year',
         )
+
+    def get_participant(self, user):
+        try:
+            userseminar = user.userseminar
+            return ParticipantProfileSerializer(userseminar).data
+        except ObjectDoesNotExist:
+            return None
+    def get_instructor(self, user):
+        try:
+            userseminar = user.userseminar
+            return InstructorProfileSerializer(userseminar).data
+        except ObjectDoesNotExist:
+            return None
 
     def validate_password(self, value):
         return make_password(value)

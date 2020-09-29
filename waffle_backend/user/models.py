@@ -10,6 +10,7 @@ class ParticipantProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
     university = models.CharField(max_length=50, blank=True)
+    accepted = models.BooleanField(default = True)
 
 '''
 @receiver(post_save, sender=User)
