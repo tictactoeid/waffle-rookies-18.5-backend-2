@@ -4,6 +4,9 @@ from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from seminar.serializers import ParticipantProfileSerializer, InstructorProfileSerializer
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
+from user.models import ParticipantProfile, InstructorProfile
+from seminar.models import UserSeminar
 
 class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(allow_blank=False)
@@ -14,10 +17,12 @@ class UserSerializer(serializers.ModelSerializer):
     date_joined = serializers.DateTimeField(read_only=True)
     participant = serializers.SerializerMethodField()
     instructor = serializers.SerializerMethodField()
-    #role = serializers.CharField(allow_blank=False)
-    #university = serializers.CharField(allow_blank=True, required=False)
-    #company=serializers.CharField(allow_blank=True, required=False)
-    #year=serializers.IntegerField(allow_null=True,required=False)
+    #role = serializers.SerializerMethodField(source = UserSeminar.role)
+    role = serializers.ChoiceField(write_only = True, choices = ('participant', 'instructor'))
+    university = serializers.CharField(allow_blank=True, required=False)
+    accepted = serializers.BooleanField(default = True, required = False)
+    company=serializers.CharField(allow_blank=True, required=False)
+    year=serializers.IntegerField(allow_null=True,required=False)
 
     class Meta:
         model = User
@@ -32,24 +37,25 @@ class UserSerializer(serializers.ModelSerializer):
             'date_joined',
             'participant',
             'instructor',
-            #'role',
-            #'university',
-            #'company',
-            #'year',
+            'role',
+            'university',
+            'accepted',
+            'company',
+            'year',
         )
 
     def get_participant(self, user):
-        try:
-            userseminar = user.userseminar
-            return ParticipantProfileSerializer(userseminar).data
-        except ObjectDoesNotExist:
+        if hasattr(user, 'participant'):
+            return ParticipantProfileSerializer(user.participant).data
+        else:
             return None
+
     def get_instructor(self, user):
-        try:
-            userseminar = user.userseminar
-            return InstructorProfileSerializer(userseminar).data
-        except ObjectDoesNotExist:
+        if hasattr(user, 'instructor'):
+            return InstructorProfileSerializer(user.instructor).data
+        else:
             return None
+
 
     def validate_password(self, value):
         return make_password(value)
@@ -61,13 +67,29 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("First name and last name should appear together.")
         if first_name and last_name and not (first_name.isalpha() and last_name.isalpha()):
             raise serializers.ValidationError("First name or last name should not have number.")
+
+        role = data.get('role')
+        if role == 'instructor':
+            profileSerializer = InstructorProfileSerializer(data = data, context = self.context)
+        else:
+            profileSerializer = ParticipantProfileSerializer(data=data, context=self.context)
+        profileSerializer.is_valid(raise_exception = True)
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
+        company = validated_data.pop('company', '')
+        year = validated_data.pop('year', None)
+        university = validated_data.pop('university', '')
+        accepted = validated_data.pop('accepted', None)
+        role = validated_data.pop('role')
+
         user = super(UserSerializer, self).create(validated_data)
-        #print('user')
         Token.objects.create(user=user)
-        #print('token')
+        if role == 'participant':
+            ParticipantProfile.objects.create(user = user, university = university, accepted = accepted)
+        elif role == 'instructor':
+            InstructorProfile.objects.create(user = user, company = company, year = year)
         return user
 
 '''

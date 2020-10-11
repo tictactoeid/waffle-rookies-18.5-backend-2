@@ -2,105 +2,78 @@ from seminar.models import Seminar, UserSeminar
 from rest_framework import serializers
 from user.models import InstructorProfile, ParticipantProfile
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.models import User
 
 class InstructorProfileSerializer(serializers.ModelSerializer):
-    id = serializers.SerializerMethodField()
-    username = serializers.SerializerMethodField()
-    email = serializers.SerializerMethodField()
-    first_name = serializers.SerializerMethodField()
-    last_name = serializers.SerializerMethodField()
-    joined_at = serializers.SerializerMethodField()
+
+    charge = serializers.SerializerMethodField()
 
     class Meta:
-        model = UserSeminar # User?
+        model = InstructorProfile # User?
         fields = (
             'id',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'joined_at'
+            'company',
+            'year',
+            'charge',
         )
-    def get_id(self, userseminar):
-        return userseminar.user.id
-    def get_username(self, userseminar):
-        return userseminar.user.username
-    def get_email(self, userseminar):
-        return userseminar.user.email
-    def get_first_name(self, userseminar):
-        return userseminar.user.first_name
-    def get_last_name(self, userseminar):
-        return userseminar.user.last_name
 
-    def get_joined_at(self, userseminar):
-        '''if context:
-            print(context)
-        #print('get_joined_at() called')
-        #print(profile)
-        user = profile.user
-        #print(user)
-        userseminar = user.userseminar
-        #print(userseminar)'''
-        print(userseminar)
-        print(userseminar.user.userseminar)
-        return userseminar.joined_at
-        #return userseminar
-
-        #print(userseminar)
-        #print(userseminar.joined_at)
-        #return userseminar.joined_at
-
-        #user = profile.user
-        #userseminar = UserSeminar.objects.filter(user = user)
-        #return userseminar.joined_at
-
-
+    def get_charge(self, profile):
+        seminars = profile.user.userseminar.filter(role='instructor').last()
+        if seminars:
+            return InstructorSeminarSerializer(seminars, context=self.context, many=True).data
+        else:
+            return None
 
 class ParticipantProfileSerializer(serializers.ModelSerializer):
-    id = serializers.SerializerMethodField()
-    username = serializers.SerializerMethodField()
-    email = serializers.SerializerMethodField()
-    first_name = serializers.SerializerMethodField()
-    last_name = serializers.SerializerMethodField()
-    joined_at = serializers.SerializerMethodField()
-    is_active = serializers.SerializerMethodField()
-    dropped_at = serializers.SerializerMethodField()
+
+    accepted = serializers.BooleanField(default=True, required=False)
+    seminars = serializers.SerializerMethodField(read_only=True)
+    #user_id = serializers.IntegerField(write_only=True, required=False)
+
+    class Meta:
+        model = ParticipantProfile
+        fields = (
+            'id',
+            'university',
+            'accepted',
+            'seminars',
+            #'user_id',
+        )
+
+    def get_seminars(self, profile):
+        seminars = profile.user.userseminar.filter(role='participant')
+        #user = User.objects.filter(participant = profile.id)
+        #seminars = UserSeminar.objects.filter(user = user, role = 'participant')
+        return ParticipantSeminarSerializer(seminars, context=self.context, many=True).data
+
+class InstructorSeminarSerializer(serializers.ModelSerializer):
+    #joined_at = serializers.DateTimeField(source='created_at')
+    id = serializers.IntegerField(source = 'seminar.id')
+    name = serializers.CharField(source = 'seminar.name')
 
     class Meta:
         model = UserSeminar
         fields = (
-            'id',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
             'joined_at',
-            'is_active',
-            'dropped_at'
+            'id',
+            'name',
         )
-    def get_id(self, userseminar):
-        return userseminar.user.id
-    def get_username(self, userseminar):
-        return userseminar.user.username
-    def get_email(self, userseminar):
-        return userseminar.user.email
-    def get_first_name(self, userseminar):
-        return userseminar.user.first_name
-    def get_last_name(self, userseminar):
-        return userseminar.user.last_name
 
-    def get_joined_at(self, userseminar):
-        return userseminar.joined_at
 
-        #print(userseminar)
-        #print(userseminar.joined_at)
-        #return userseminar.joined_at
+class ParticipantSeminarSerializer(serializers.ModelSerializer):
+    #joined_at = serializers.DateTimeField(source='created_at')
+    id = serializers.IntegerField(source = 'seminar.id')
+    name = serializers.CharField(source = 'seminar.name')
 
-    def get_is_active(self, userseminar):
-        return userseminar.is_active
-
-    def get_dropped_at(self, userseminar):
-        return userseminar.dropped_at
+    class Meta:
+        model = UserSeminar
+        fields = (
+            'joined_at',
+            'id',
+            'name',
+            'is_active',
+            'dropped_at',
+        )
 
 
 class SeminarSerializer(serializers.ModelSerializer):
@@ -113,7 +86,7 @@ class SeminarSerializer(serializers.ModelSerializer):
     instructors = serializers.SerializerMethodField()
     participants = serializers.SerializerMethodField()
 
-    #instructors = InstructorProfileSerializer(read_only=True, many=True, required=False)
+    #instructors = InstructorProfileSerializer(many=True, required=False)
     #participants = ParticipantProfileSerializer(many=True, required=False)
 
     class Meta:
@@ -130,51 +103,19 @@ class SeminarSerializer(serializers.ModelSerializer):
         )
 
     def get_instructors(self, seminar):
-        userseminar = UserSeminar.objects.filter(seminar = seminar, role = 'instructor')#[0] # [0] 빼기
-        #user = userseminar.user
+        userseminar = UserSeminar.objects.filter(seminar = seminar, role = 'instructor')
         try:
-            #profile = user.instructor
-            return InstructorProfileSerializer(userseminar, many=True).data # many = True
+            return InstructorProfileSerializer(userseminar.user.instructor, context=self.context, many=True).data
         except ObjectDoesNotExist:
             return None
 
     def get_participants(self, seminar):
-        userseminar = UserSeminar.objects.filter(seminar = seminar, role = 'participant')# [0]
-        #user = userseminar.user
+        userseminar = UserSeminar.objects.filter(seminar = seminar, role = 'participant')
         try:
-            #profile = user.participant
-            return ParticipantProfileSerializer(userseminar, many=True).data
+            return ParticipantProfileSerializer(userseminar.user.participant, context=self.context, many=True).data # many = True
         except ObjectDoesNotExist:
             return None
 
-    '''def get_instructors(self, seminar):
-        print('seminarserializer')
-        print(seminar)
-        #print(seminar[0])
-        #self.context['seminar_id'] = seminar.id
-        #user = request.user
-
-
-        #id = self.context['seminar_id']
-        #id = seminar.id
-        #userseminar = UserSeminar.objects.filter(seminar = id)
-        #user = userseminar.user
-        userseminar = UserSeminar.objects.filter(user = user)
-        profile = InstructorProfile.objects.filter(user = user) # user=user
-        return InstructorProfileSerializer(profile, many=True).data
-
-        
-        us = seminar.userseminar.all()
-        profiles = us.filter(user.instructors = )
-        userseminar = seminar.userseminar
-        print(userseminar)
-        profile = userseminar.user.instructor
-        return profile'''
-
-   #def get_participants(self, seminar):
-   #     userseminar = UserSeminar.objects.filter(seminar = seminar)
-   #     profile = userseminar.user.participants
-   #     return profile
 
     def validate_capacity(self, value):
         try:
@@ -233,15 +174,6 @@ class SeminarSerializer(serializers.ModelSerializer):
         seminar = Seminar.objects.create(**validated_data)
         return seminar
 
-#   def create(self, seminar):
-        #seminar.save()
-        #return seminar
-        #if inst:
-        #    validated_data['instructors'] = inst
-        #print(validated_data)
-        #print(object)
-
-
     def update(self, instance, validated_data):
         print(validated_data)
         if 'name' in validated_data:
@@ -256,14 +188,3 @@ class SeminarSerializer(serializers.ModelSerializer):
             instance.online = validated_data['online']
 
         return instance
-
-'''
-class UserSeminarSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = UserSeminar
-        fields = (
-            'id',
-
-        )'''
-

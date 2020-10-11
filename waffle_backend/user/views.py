@@ -1,6 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from rest_framework import status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -22,6 +22,7 @@ class UserViewSet(viewsets.GenericViewSet):
             return (AllowAny(), )
         return self.permission_classes
 
+    @transaction.atomic
     def create(self, request): #회원가입. POST /api/v1/user/
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -31,7 +32,7 @@ class UserViewSet(viewsets.GenericViewSet):
         year = request.data.get('year')
         seminar = request.data.get('seminar')
 
-        if year != None:
+        if year:
             try:
                 year = int(year)
             except TypeError:
@@ -50,7 +51,7 @@ class UserViewSet(viewsets.GenericViewSet):
             return Response({"error": "A user with that username already exists."}, status=status.HTTP_400_BAD_REQUEST)
             #print("Error:" + str(e))
 
-        if role == 'participant':
+        '''if role == 'participant':
             if university == None:
                 university = ""
             profile = ParticipantProfile.objects.create(user=user, university=university)
@@ -68,13 +69,11 @@ class UserViewSet(viewsets.GenericViewSet):
             #profile.save()
             #userseminar = UserSeminar(user=user, role=role, seminar=seminar)
             #userseminar.save()
-            print('role')
+            print('role')'''
 
-        else:
+        if role != 'participant' and role != 'instructor': #else:
             return Response({"error": "Your role should be 'participant' or 'instructor'."},
                             status=status.HTTP_400_BAD_REQUEST)
-
-
 
         login(request, user)
 
@@ -108,35 +107,27 @@ class UserViewSet(viewsets.GenericViewSet):
         user = request.user if pk == 'me' else self.get_object()
         return Response(self.get_serializer(user).data)
 
+    @transaction.atomic
     def update(self, request, pk=None): # PUT /api/v1/user/me/
-        #print('update')
         if pk != 'me':
             return Response({"error": "Can't update other Users information"}, status=status.HTTP_403_FORBIDDEN)
 
         user = request.user
-
-        #role = request.data.get('role')
         university = request.data.get('university')
+        if university == None:
+            university = ""
         company = request.data.get('company')
         year = request.data.get('year')
-        #seminar = request.data.get('seminar')
-
-        # print(hasattr(user, 'participant'))
-        # print(hasattr(user, 'instructor'))
 
         if hasattr(user, 'participant'):
             profile = user.participant
-            #print(profile.university)
             profile.university = university
             profile.save()
-            #print(profile.university)
-            #profile.update?
-
         elif hasattr(user, 'instructor'):
             profile = user.instructor
             profile.company = company
 
-            if year != None:
+            if year:
                 try:
                     year = int(year)
                     profile.year = year
@@ -152,15 +143,6 @@ class UserViewSet(viewsets.GenericViewSet):
 
         else:
             return Response({"error": "You do not have any role"}, status=status.HTTP_400_BAD_REQUEST)
-        '''
-        try:
-            user.instructor
-        except ObjectDoesNotExist:
-            print("no inst")
-        try:
-            user.participant
-        except ObjectDoesNotExist:
-            print("no par")'''
 
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
