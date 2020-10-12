@@ -92,28 +92,3 @@ class UserSerializer(serializers.ModelSerializer):
             InstructorProfile.objects.create(user = user, company = company, year = year)
         return user
 
-'''
-class ParticipantProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ParticipantProfile
-        fields = (
-            'id',
-            'created_at',
-            'updated_at',
-            'university',
-            #'accepted',
-
-
-        )
-
-class InstructorProfileSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = InstructorProfile
-        fields = (
-            'id',
-            'created_at',
-            'updated_at',
-            'company',
-            'year',
-        )'''

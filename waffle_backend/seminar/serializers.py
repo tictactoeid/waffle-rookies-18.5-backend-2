@@ -46,7 +46,7 @@ class ParticipantProfileSerializer(serializers.ModelSerializer):
         #seminars = UserSeminar.objects.filter(user = user, role = 'participant')
         return ParticipantSeminarSerializer(seminars, context=self.context, many=True).data
 
-class InstructorSeminarSerializer(serializers.ModelSerializer):
+class InstructorSeminarSerializer(serializers.ModelSerializer): # InstructorProfileSerializer에서 접근하는 seminar 정보
     #joined_at = serializers.DateTimeField(source='created_at')
     id = serializers.IntegerField(source = 'seminar.id')
     name = serializers.CharField(source = 'seminar.name')
@@ -60,7 +60,7 @@ class InstructorSeminarSerializer(serializers.ModelSerializer):
         )
 
 
-class ParticipantSeminarSerializer(serializers.ModelSerializer):
+class ParticipantSeminarSerializer(serializers.ModelSerializer): # ParticipantProfileSerializer에서 접근하는 seminar 정보
     #joined_at = serializers.DateTimeField(source='created_at')
     id = serializers.IntegerField(source = 'seminar.id')
     name = serializers.CharField(source = 'seminar.name')
@@ -103,16 +103,16 @@ class SeminarSerializer(serializers.ModelSerializer):
         )
 
     def get_instructors(self, seminar):
-        userseminar = UserSeminar.objects.filter(seminar = seminar, role = 'instructor')
+        instructors = seminar.userseminar.filter(role = 'instructor')
         try:
-            return InstructorProfileSerializer(userseminar.user.instructor, context=self.context, many=True).data
+            return InstructorsOfSeminarSerializer(instructors, context=self.context, many=True).data
         except ObjectDoesNotExist:
             return None
 
     def get_participants(self, seminar):
-        userseminar = UserSeminar.objects.filter(seminar = seminar, role = 'participant')
+        participants = seminar.userseminar.filter(role = 'participants')
         try:
-            return ParticipantProfileSerializer(userseminar.user.participant, context=self.context, many=True).data # many = True
+            return ParticipantsOfSeminarSerializer(participants, context=self.context, many=True).data # many = True
         except ObjectDoesNotExist:
             return None
 
@@ -141,7 +141,6 @@ class SeminarSerializer(serializers.ModelSerializer):
         if not ":" in str(value):
             raise serializers.ValidationError("Time should be like 14:30.")
         else:
-            print(str(value))
             hour, min, sec = str(value).split(":")
             try:
                 intHour = int(hour)
@@ -175,7 +174,6 @@ class SeminarSerializer(serializers.ModelSerializer):
         return seminar
 
     def update(self, instance, validated_data):
-        print(validated_data)
         if 'name' in validated_data:
             instance.name = validated_data['name']
         if 'capacity' in validated_data:
@@ -188,3 +186,43 @@ class SeminarSerializer(serializers.ModelSerializer):
             instance.online = validated_data['online']
 
         return instance
+
+class InstructorsOfSeminarSerializer(serializers.ModelSerializer): # SeminarSerializer에서 접근하는 Instructors의 InstructorProfileSerializer 정보
+    id = serializers.IntegerField(source = 'user.id')
+    username = serializers.CharField(source = 'user.username')
+    email = serializers.EmailField(source = 'user.email')
+    first_name = serializers.CharField(source = 'user.first_name')
+    last_name = serializers.CharField(source = 'user.last_name')
+
+    class Meta:
+        model = UserSeminar
+        fields = (
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'joined_at',
+
+        )
+
+class ParticipantsOfSeminarSerializer(serializers.ModelSerializer): # SeminarSerializer에서 접근하는 Instructors의 InstructorProfileSerializer 정보
+    id = serializers.IntegerField(source = 'user.id')
+    username = serializers.CharField(source = 'user.username')
+    email = serializers.EmailField(source = 'user.email')
+    first_name = serializers.CharField(source = 'user.first_name')
+    last_name = serializers.CharField(source = 'user.last_name')
+
+    class Meta:
+        model = UserSeminar
+        fields = (
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'joined_at',
+            'is_active',
+            'dropped_at',
+
+        )

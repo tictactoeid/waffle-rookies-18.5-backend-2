@@ -3,9 +3,9 @@ from django.test import Client, TestCase
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 import json
-
+import random
 from user.models import InstructorProfile, ParticipantProfile
-
+from seminar.serializers import ParticipantProfileSerializer
 
 class PostUserTestCase(TestCase):
     client = Client()
@@ -297,3 +297,307 @@ class PutUserMeTestCase(TestCase):
 
         instructor_user = User.objects.get(username='inst123')
         self.assertEqual(instructor_user.email, 'bdv111@naver.com')
+
+class PutUserLoginTestCase(TestCase):
+    client = Client()
+
+    def setUp(self): # 테스트 전 db초기화
+        self.client.post( #우선 유저를 가입시킴.
+            '/api/v1/user/',
+            json.dumps({
+                "username": "testUserPart",
+                "password": "password",
+                "first_name": "Jimin",
+                "last_name": "Jung",
+                "email": "test1234@snu.ac.kr",
+                "role": "participant",
+                "university": "서울대학교"
+            }),
+            content_type='application/json'
+        )
+        self.participant_token = 'Token ' + Token.objects.get(user__username='testUserPart').key
+
+        self.client.post(
+            '/api/v1/user/',
+            json.dumps({
+                "username": "testUserInst",
+                "password": "password",
+                "first_name": "Jimin",
+                "last_name": "Jung",
+                "email": "test111@snu.ac.kr",
+                "role": "instructor",
+                "year": 3,
+                "company": "대학원"
+            }),
+            content_type='application/json'
+        )
+        self.instructor_token = 'Token ' + Token.objects.get(user__username='testUserInst').key
+
+    def test_put_user_login_participant(self):
+        response = self.client.put(
+            '/api/v1/user/login/',
+            json.dumps({
+                "username": "testUserPart",
+                "password": "password"
+            }),
+            content_type='application/json',
+            #HTTP_AUTHORIZATION=self.participant_token
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK) # login 요청 후 HTTP status 확인
+
+        data = response.json() # response body 확인
+        self.assertIn("id", data)
+        self.assertEqual(data["username"], "testUserPart")
+        self.assertEqual(data["email"], "test1234@snu.ac.kr")
+        self.assertEqual(data["first_name"], "Jimin")
+        self.assertEqual(data["last_name"], "Jung")
+        self.assertIn("last_login", data)
+        self.assertIn("date_joined", data)
+        self.assertIn("token", data)
+
+        participant = data["participant"]
+        self.assertIsNotNone(participant)
+        self.assertIn("id", participant)
+        self.assertEqual(participant["university"], "서울대학교")
+        self.assertTrue(participant["accepted"])
+        self.assertEqual(len(participant["seminars"]), 0)
+
+        self.assertIsNone(data["instructor"])
+
+    def test_put_user_login_instructor(self):
+        response = self.client.put(
+            '/api/v1/user/login/',
+            json.dumps({
+                "username": "testUserInst",
+                "password": "password"
+            }),
+            content_type='application/json',
+            #HTTP_AUTHORIZATION=self.instructor_token
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)  # login 요청 후 HTTP status 확인
+
+        data = response.json()  # response body 확인
+        self.assertIn("id", data)
+        self.assertEqual(data["username"], "testUserInst")
+        self.assertEqual(data["email"], "test111@snu.ac.kr")
+        self.assertEqual(data["first_name"], "Jimin")
+        self.assertEqual(data["last_name"], "Jung")
+        self.assertIn("last_login", data)
+        self.assertIn("date_joined", data)
+        self.assertIn("token", data)
+
+        instructor = data["instructor"]
+        self.assertIsNotNone(instructor)
+        self.assertIn("id", instructor)
+        self.assertEqual(instructor["company"], "대학원")
+        self.assertEqual(instructor["year"], 3)
+        self.assertIsNone(instructor["charge"])
+
+        self.assertIsNone(data["participant"])
+
+    def test_put_user_login_invalid_request(self):
+        # user not exists
+        response = self.client.put(
+            '/api/v1/user/login/',
+            json.dumps({
+                "username": "someUserNotExits",
+                "password": "password"
+            }),
+            content_type='application/json',
+            #HTTP_AUTHORIZATION=self.instructor_token
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # password mismatch
+        response = self.client.put(
+            '/api/v1/user/login/',
+            json.dumps({
+                "username": "testUserInst",
+                "password": "WRONGpassword"
+            }),
+            content_type='application/json',
+            #HTTP_AUTHORIZATION=self.instructor_token
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # token mismatch
+        '''response = self.client.put(
+            '/api/v1/user/login/',
+            json.dumps({
+                "username": "testUserInst",
+                "password": "password"
+            }),
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.participant_token
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)'''
+        # 생각해보니 로그인시에는 token 필요 없음. (테스트 실행 시 200)
+
+class GetUserTestCase(TestCase):
+    client = Client()
+
+    def setUp(self):  # 테스트 전 db초기화
+        self.client.post(  # 우선 유저를 가입시킴.
+            '/api/v1/user/',
+            json.dumps({
+                "username": "testUserPart",
+                "password": "password",
+                "first_name": "Jimin",
+                "last_name": "Jung",
+                "email": "test1234@snu.ac.kr",
+                "role": "participant",
+                "university": "서울대학교"
+            }),
+            content_type='application/json'
+        )
+        self.participant_token = 'Token ' + Token.objects.get(user__username='testUserPart').key
+
+        self.participant_user = User.objects.get(username='testUserPart')
+
+        self.client.post(
+            '/api/v1/user/',
+            json.dumps({
+                "username": "testUserInst",
+                "password": "password",
+                "first_name": "Jimin",
+                "last_name": "Jung",
+                "email": "test111@snu.ac.kr",
+                "role": "instructor",
+                "year": 3,
+                "company": "대학원"
+            }),
+            content_type='application/json'
+        )
+        self.instructor_token = 'Token ' + Token.objects.get(user__username='testUserInst').key
+
+        self.instructor_user = User.objects.get(username='testUserInst')
+
+    def test_get_user_userid(self):
+        # 자신의 정보 get
+        response = self.client.get(
+            '/api/v1/user/' + str(self.participant_user.id) + '/',
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.participant_token,
+        )
+        data = response.json()  # response body 확인
+        self.assertIn("id", data)
+        self.assertEqual(data["username"], "testUserPart")
+        self.assertEqual(data["email"], "test1234@snu.ac.kr")
+        self.assertEqual(data["first_name"], "Jimin")
+        self.assertEqual(data["last_name"], "Jung")
+        self.assertIn("last_login", data)
+        self.assertIn("date_joined", data)
+
+        # 타 유저의 정보 get
+        response = self.client.get(
+            '/api/v1/user/' + str(self.instructor_user.id) + '/',
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.participant_token,
+        )
+        data = response.json()  # response body 확인
+        self.assertIn("id", data)
+        self.assertEqual(data["username"], "testUserInst")
+        self.assertEqual(data["email"], "test111@snu.ac.kr")
+        self.assertEqual(data["first_name"], "Jimin")
+        self.assertEqual(data["last_name"], "Jung")
+        self.assertIn("last_login", data)
+        self.assertIn("date_joined", data)
+
+    def test_get_user_me(self):
+        response = self.client.get(
+            '/api/v1/user/me/',
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.participant_token,
+        )
+        data = response.json()  # response body 확인
+        self.assertIn("id", data)
+        self.assertEqual(data["username"], "testUserPart")
+        self.assertEqual(data["email"], "test1234@snu.ac.kr")
+        self.assertEqual(data["first_name"], "Jimin")
+        self.assertEqual(data["last_name"], "Jung")
+        self.assertIn("last_login", data)
+        self.assertIn("date_joined", data)
+
+    def test_get_user_userid_not_exist(self):
+        user = True
+        id = 1
+        while user: # 해당 id를 갖는 user가 존재하지 않는 id 찾기.
+            id += 1
+            user = User.objects.filter(id = id)
+
+        response = self.client.get(
+            '/api/v1/user/' + str(id) + '/',
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.participant_token,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+class PostUserParticipantTestCase(TestCase):
+    client = Client()
+
+    def setUp(self):
+        self.client.post(
+            '/api/v1/user/',
+            json.dumps({
+                "username": "testUserInst",
+                "password": "password",
+                "first_name": "Jimin",
+                "last_name": "Jung",
+                "email": "test111@snu.ac.kr",
+                "role": "instructor",
+                "year": 3,
+                "company": "대학원"
+            }),
+            content_type='application/json'
+        )
+        self.instructor_token = 'Token ' + Token.objects.get(user__username='testUserInst').key
+        self.instructor_user = User.objects.get(username='testUserInst')
+
+        self.client.post(
+            '/api/v1/user/',
+            json.dumps({
+                "username": "testUserPart",
+                "password": "password",
+                "first_name": "Jimin",
+                "last_name": "Jung",
+                "email": "test1234@snu.ac.kr",
+                "role": "participant",
+                "university": "서울대학교"
+            }),
+            content_type='application/json'
+        )
+        self.participant_token = 'Token ' + Token.objects.get(user__username='testUserPart').key
+        self.participant_user = User.objects.get(username='testUserPart')
+
+
+    def test_post_user_participant(self):
+        response = self.client.post(
+            '/api/v1/user/participant/',
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.instructor_token,
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        participant_profile = ParticipantProfile.objects.get(user=self.instructor_user)
+        participant_serializer = ParticipantProfileSerializer(participant_profile)
+
+        data = response.json()
+        self.assertIn("id", data)
+        self.assertEqual(data["username"], "testUserInst")
+        self.assertEqual(data["email"], "test111@snu.ac.kr")
+        self.assertEqual(data["first_name"], "Jimin")
+        self.assertEqual(data["last_name"], "Jung")
+        self.assertIn("last_login", data)
+        self.assertIn("date_joined", data)
+        self.assertEqual(data["participant"], participant_serializer.data)
+
+    def test_post_user_participant_already_participant(self):
+        response = self.client.post(
+            '/api/v1/user/participant/',
+            content_type='application/json',
+            HTTP_AUTHORIZATION=self.participant_token,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+
+

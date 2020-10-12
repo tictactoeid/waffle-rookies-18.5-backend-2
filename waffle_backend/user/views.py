@@ -103,7 +103,6 @@ class UserViewSet(viewsets.GenericViewSet):
         return Response()
 
     def retrieve(self, request, pk=None): # GET /api/v1/user/{user_id}/
-        #print('retrieve')
         user = request.user if pk == 'me' else self.get_object()
         return Response(self.get_serializer(user).data)
 
@@ -149,17 +148,21 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer.update(user, serializer.validated_data)
         return Response(serializer.data)
 
+    @transaction.atomic
     @action(detail=False, methods=['POST'])
     def participant(self, request):
         user = request.user
         university = request.data.get("university")
+        if university == None:
+            university = ""
 
         if hasattr(user, 'participant'):
-            return Response({"error": "You are already an participant."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "You are already a participant."}, status=status.HTTP_400_BAD_REQUEST)
 
         profile = ParticipantProfile(user=user, university=university)
         profile.save()
 
+        #user.refresh_from_db()
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.update(user, serializer.validated_data)
