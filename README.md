@@ -39,4 +39,4 @@ https://github.com/wafflestudio/rookies/issues/207
         else:
             return Response(status = status.HTTP_405_METHOD_NOT_ALLOWED)
  ```
-와 같은 코드를 추가하고 기존의 ```@action``` decorator를   해결했습니다.
+와 같은 코드를 추가하고 기존의 ```@action``` decorator를 삭제해 해결했습니다.
