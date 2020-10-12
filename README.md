@@ -1,10 +1,12 @@
 # waffle-rookies-18.5-backend-2
 
+(과제3)
 시험이 끝난 지 얼마 지나지 않아서 아직 다 끝마치지 못했습니다. grace day 하루 사용하게 될 것 같습니다.
+=> grace day 실제로 하루 사용하여 2020-10-12에 제출하였습니다.
 
-
-
-
+```seminar/serializers.py```의 구조를 전체적으로 바꾸었습니다. 기존에는
+```ParticipantProfileSerializer```와 ```InstructorProfileSerializer```가 model로 ```UserSeminar```를 받고 있는 약간 이상한 구조였습니다. 그 때문인지 ```SerializerMethodField```를 이용할 때 알 수 없는 오류도 많이 발생하였습니다. 지금은 ```ParticipantProfile, InstructorProfile```을 각각 받게 하고
+Profile에서 UserSeminar 정보를 받아올 때 이용하는 Serializer, SeminarSerializer에서 Profile 정보를 받아올 때 이용하는 Serializer 총 4개(각 ParticipantProfile, InstructorProfile 2개씩)을 만들어 해결하였습니다. 이 과정에서 일부 API(예를 들어 seminar 생성)의 Response body가 주어진 명세에 맞지 않는 점을 수정하였습니다.
 
 ```
 PUT /api/v1/seminar/{seminar_id}/
