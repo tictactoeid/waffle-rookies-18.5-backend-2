@@ -25,7 +25,7 @@ SECRET_KEY = '0^k@b1ln%g7l_*6xr*&5&vhgp7r$i&n-db#_!(8*a$n2y1hf4='
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
+DEBUG_TOOLBAR = True #os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
 ALLOWED_HOSTS = []
 
@@ -101,6 +101,20 @@ DATABASES = {
         'PASSWORD': 'seminar',
     }
 }
+
+# Cache (redis)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1", # 1번 DB
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+
 
 
 # Password validation

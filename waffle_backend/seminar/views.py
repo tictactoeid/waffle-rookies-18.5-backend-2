@@ -1,5 +1,6 @@
 import datetime
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.cache import cache
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -77,20 +78,34 @@ class SeminarViewSet(viewsets.GenericViewSet):
 
         if 'order' in request.query_params:
             order = request.query_params.get('order')
+        else:
+            order = None
+
+        cache_key = 'seminarsList'
+        data = cache.get(cache_key)
+
+        if not data: # cache miss
+            seminar = None
+            print("cache miss")
             if order == 'earliest':
                 if name:
                     seminar = Seminar.objects.filter(name=name).order_by('created_at')
                 else:
                     seminar = Seminar.objects.all().order_by('created_at')
-            else:
-                seminar = Seminar.objects.filter(name=name)
-        else:
-            if name:
-                seminar = Seminar.objects.filter(name=name)
-            else:
-                seminar = Seminar.objects.all()
 
-        data = self.get_serializer(seminar, many=True).data
+            else:
+                if name:
+                    seminar = Seminar.objects.filter(name=name)
+                else:
+                    seminar = Seminar.objects.all()
+
+            data = self.get_serializer(seminar, many=True).data
+            if not name:
+                cache.set(cache_key, data, timeout = 10)
+
+        else: # cache hit
+            print("cache hit")
+
         return Response(data)
 
 
