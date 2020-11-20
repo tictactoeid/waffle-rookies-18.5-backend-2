@@ -15,6 +15,7 @@ import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
+ROOT_DIR = os.path.dirname(BASE_DIR)
 
 
 # Quick-start development settings - unsuitable for production
@@ -27,7 +28,7 @@ SECRET_KEY = '0^k@b1ln%g7l_*6xr*&5&vhgp7r$i&n-db#_!(8*a$n2y1hf4='
 DEBUG = True
 DEBUG_TOOLBAR = True #os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['ec2-3-131-96-251.us-east-2.compute.amazonaws.com', '3.131.96.251', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -94,9 +95,9 @@ WSGI_APPLICATION = 'waffle_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': 'localhost',
+        'HOST': 'waffle-backend-db.cafxmlcsmktu.us-east-2.rds.amazonaws.com',
         'PORT': 3306,
-        'NAME': 'waffle_backend_assignment_2',
+        'NAME': 'waffle_backend',
         'USER': 'waffle-backend',
         'PASSWORD': 'seminar',
     }
@@ -154,3 +155,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(ROOT_DIR, '.static')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(ROOT_DIR, '.media')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+
+STATICFILES_DIRS = [
+    STATIC_DIR,
+]
