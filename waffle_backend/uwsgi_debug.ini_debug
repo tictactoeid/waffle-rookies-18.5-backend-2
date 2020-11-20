@@ -1,0 +1,6 @@
+[uwsgi]
+home = /home/ec2-user/virtualenv/waffleBackend/
+chdir = /home/ec2-user/waffle-server/waffle_backend/
+socket = 127.0.0.1:8001
+# wsgi-file = /home/ec2-user/waffle-server/waffle_backend/waflfe_backend/wsgi.py
+module =waffle_backend.wsgi:application
