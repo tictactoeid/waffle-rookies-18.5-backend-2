@@ -25,8 +25,8 @@ ROOT_DIR = os.path.dirname(BASE_DIR)
 SECRET_KEY = '0^k@b1ln%g7l_*6xr*&5&vhgp7r$i&n-db#_!(8*a$n2y1hf4='
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-DEBUG_TOOLBAR = True #os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
+DEBUG = False
+DEBUG_TOOLBAR = os.getenv('DEBUG_TOOLBAR') in ('true', 'True')
 
 ALLOWED_HOSTS = ['ec2-3-131-96-251.us-east-2.compute.amazonaws.com', '3.131.96.251', 'localhost', '127.0.0.1']
 
